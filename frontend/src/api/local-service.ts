@@ -1,5 +1,11 @@
 import { MODULE_BY_KEY } from '@/data/modules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
+import {
+  CRACK_FLOW_ACTION,
+  crossCheckClearance,
+  flowCrack,
+  type Identity,
+} from './crack-service'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
 
 // 会写进数据的「往回走」动作：命中就把这条记录标成异常态，看板上能一眼看出来。
@@ -28,7 +34,12 @@ export function listEntries(key: string, filters: Record<string, string> = {}): 
   return { items: matched, total: matched.length, page: 1, size: matched.length }
 }
 
-export function runAction(key: string, id: number, action: string): ActionResult {
+export function runAction(
+  key: string,
+  id: number,
+  action: string,
+  identity?: Identity,
+): ActionResult {
   const meta = moduleMeta(key)
   const target = meta.actionTargets[action]
   if (!target) {
@@ -39,10 +50,34 @@ export function runAction(key: string, id: number, action: string): ActionResult
   if (index < 0) {
     return { ok: false, message: `没有找到编号为 ${id} 的${meta.entity}` }
   }
+
+  // 裂缝的状态流转归裂缝领域服务收口：归属、封填只读、逐环流转都在那里判定。
+  if (key === 'crack' && CRACK_FLOW_ACTION[action]) {
+    if (!identity) {
+      return { ok: false, message: '缺少当前观测人身份，无法校验归属，提交退回' }
+    }
+    return flowCrack(id, action, identity)
+  }
+  if (key === 'crack' && action === '提交复核') {
+    return { ok: false, message: '封填复核请使用裂缝记录上的「提交复核」入口' }
+  }
+
   const current = String(rows[index].status)
   if (current === target) {
     return { ok: false, message: `${meta.entity}已经是「${target}」，不用重复操作` }
   }
+  // 隐患核销确认前，把裂缝走向两处再翻一遍，冲突按优先级以裂缝档案为准对齐。
+  // crossCheck 可能已改写该行的核销依据，这里以对齐后的最新行作为更新底本。
+  let crossCheckNote = ''
+  if (key === 'clearance' && target === '已核销') {
+    const checked = crossCheckClearance(rows[index])
+    if (!checked.ok) {
+      return checked
+    }
+    crossCheckNote = checked.message
+    rows[index] = listRows(key)[index]
+  }
+
   const lastStatus = meta.statuses[meta.statuses.length - 1]
   const updated: EntryRow = {
     ...rows[index],
@@ -52,8 +87,9 @@ export function runAction(key: string, id: number, action: string): ActionResult
   }
   const next = [...rows]
   next[index] = updated
+
   saveRows(key, next)
-  return { ok: true, message: `${meta.entity}已${action}，当前状态「${target}」` }
+  return { ok: true, message: `${meta.entity}已${action}，当前状态「${target}」${crossCheckNote}` }
 }
 
 export function resetModule(key: string): PageResult {

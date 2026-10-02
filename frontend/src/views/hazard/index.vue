@@ -37,6 +37,7 @@
       <thead>
         <tr>
           <th v-for="column in columns" :key="column">{{ column }}</th>
+          <th>核销待办</th>
           <th>当前状态</th>
           <th>可执行动作</th>
         </tr>
@@ -44,6 +45,13 @@
       <tbody>
         <tr v-for="row in rows" :key="String(row.id)">
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
+          <td>
+            <span v-if="pendingClearanceOf(row).length" class="tag tag-pending">
+              待核销 {{ pendingClearanceOf(row).length }} 项：
+              {{ pendingClearanceOf(row).map((item) => item['核销编号']).join('、') }}
+            </span>
+            <span v-else class="muted-text">—</span>
+          </td>
           <td>{{ row.status }}</td>
           <td class="row-actions">
             <button
@@ -58,7 +66,7 @@
           </td>
         </tr>
         <tr v-if="!rows.length">
-          <td :colspan="columns.length + 2" class="empty-state">暂无隐患点建档数据，可先登记隐患点</td>
+          <td :colspan="columns.length + 3" class="empty-state">暂无隐患点建档数据，可先登记隐患点</td>
         </tr>
       </tbody>
     </table>
@@ -82,12 +90,13 @@ import {
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('hazard')
-const columns = ["隐患编号", "所在乡镇", "灾害类型", "坡体规模", "威胁户数", "威胁人数", "发现日期", "隐患状态"]
+const columns = ["隐患编号", "所在乡镇", "责任片区", "责任观测人", "灾害类型", "坡体规模", "威胁户数", "威胁人数", "发现日期", "隐患状态"]
 const actions = ["提交核查", "列入重点防范", "登记消除"]
 const statuses = ["待核查", "建档中", "重点防范", "已消除"]
 const stats = [{"label": "重点防范隐患点", "value": 0}, {"label": "待核查隐患点", "value": 0}, {"label": "威胁人数合计", "value": 0}]
 
 const rows = ref<EntryRow[]>([])
+const clearanceRows = ref<EntryRow[]>([])
 const total = ref(0)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
@@ -98,6 +107,15 @@ const statusSummary = computed(() =>
     count: rows.value.filter((row) => String(row.status) === status).length,
   })),
 )
+
+// 裂缝封填复核结论会落到隐患核销清单：待复核/复核中的单子就是隐患点建档上冒出的待核销项。
+function pendingClearanceOf(row: EntryRow): EntryRow[] {
+  return clearanceRows.value.filter(
+    (item) =>
+      String(item['所属隐患点']) === String(row['隐患编号']) &&
+      ['待复核', '复核中'].includes(String(item.status)),
+  )
+}
 
 function resetFilters() {
   filters.value = {}
@@ -128,6 +146,7 @@ function reload() {
     const payload = listEntries(meta.key, filters.value)
     rows.value = payload.items
     total.value = payload.total
+    clearanceRows.value = listEntries('clearance').items
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '隐患点建档列表读取失败'
   }
