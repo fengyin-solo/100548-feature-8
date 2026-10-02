@@ -32,6 +32,24 @@ export type ActionResult = {
   message: string
 }
 
+export type Actor = {
+  name: string
+  area: string
+}
+
+export type CrackFormInput = {
+  crackNo: string
+  hazardNo: string
+  strike: string
+  currentWidth: string
+  observationDate: string
+}
+
+export type CrackReviewInput = {
+  conclusion: '建议核销' | '继续观测'
+  reviewDate: string
+}
+
 export type OverviewResult = {
   cards: { label: string; value: number }[]
   modules: { name: string; created: number; pending: number; abnormal: number }[]

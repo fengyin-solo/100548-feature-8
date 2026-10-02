@@ -82,7 +82,7 @@ import {
 import type { EntryRow } from '@/data/types'
 
 const meta = moduleMeta('hazard')
-const columns = ["隐患编号", "所在乡镇", "灾害类型", "坡体规模", "威胁户数", "威胁人数", "发现日期", "隐患状态"]
+const columns = meta.fields
 const actions = ["提交核查", "列入重点防范", "登记消除"]
 const statuses = ["待核查", "建档中", "重点防范", "已消除"]
 const stats = [{"label": "重点防范隐患点", "value": 0}, {"label": "待核查隐患点", "value": 0}, {"label": "威胁人数合计", "value": 0}]

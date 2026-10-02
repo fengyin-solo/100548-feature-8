@@ -84,7 +84,7 @@ import type { EntryRow } from '@/data/types'
 const meta = moduleMeta('clearance')
 const columns = ["核销编号", "所属隐患点", "核销依据", "复核人", "复核日期", "核销结论", "归档日期", "核销状态"]
 const actions = ["提交复核", "确认核销", "驳回申请"]
-const statuses = ["待复核", "复核中", "已核销", "已驳回"]
+const statuses = ["待核销", "待复核", "复核中", "已核销", "已驳回"]
 const stats = [{"label": "待复核核销单", "value": 0}, {"label": "已核销隐患点", "value": 0}, {"label": "已驳回申请", "value": 0}]
 
 const rows = ref<EntryRow[]>([])

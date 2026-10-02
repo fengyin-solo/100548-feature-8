@@ -2,7 +2,7 @@ import { SEED_ROWS } from './seed'
 import type { EntryRow } from './types'
 
 // 本地持久化：数据放在 localStorage 里，刷新、关掉再打开都还在。
-const STORAGE_KEY = 'geohazard-patrol:entries'
+const STORAGE_KEY = 'geohazard-patrol:entries:v2'
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
@@ -41,10 +41,13 @@ export function listRows(key: string): EntryRow[] {
 }
 
 export function saveRows(key: string, rows: EntryRow[]): void {
-  const next = { ...allRows(), [key]: rows }
-  cache = next
+  saveAll({ ...allRows(), [key]: rows })
+}
+
+export function saveAll(rows: Record<string, EntryRow[]>): void {
+  cache = rows
   if (typeof window !== 'undefined' && window.localStorage) {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
   }
 }
 
